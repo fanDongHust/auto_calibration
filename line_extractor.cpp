@@ -461,7 +461,15 @@ cv::waitKey(0);
 }
 
 void oneview_extract_line(cv::Mat *img, cv::Mat *birdeye_img, CalibParams* camera, CalibParams* camera_v, one_frame_lines_set* res, vanishing_pts* v_pts) {
-    birdeye_oneview_transform(img, birdeye_img, camera, camera_v);
+    //birdeye_oneview_transform(img, birdeye_img, camera, camera_v);
+
+    cv::Mat camera_intrinsic;
+    cv::Mat camera_dist_coeffs;
+    init_intrinsic(camera, &camera_intrinsic, &camera_dist_coeffs);
+    undistortFisheye(*img, camera_intrinsic, camera_dist_coeffs, get_extrinsic_mat(camera), *birdeye_img);
+cv::imshow("birdeye_img.png", *birdeye_img);
+cv::imwrite("birdeye_img.png", *birdeye_img);
+cv::waitKey(0);
 
     // //convert bgr to gray
     // cv::Mat birdeye_gray;

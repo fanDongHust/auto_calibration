@@ -15,4 +15,9 @@ monitor (AVM) system simultaneously in a natural driving situation
   *Automatic Calibration of an Around View Monitor System Exploiting Lane Markings*
   by Kyoungtaek Choi, Ho Gi Jung, and Jae Kyu Suhr
 
-- 
+- Build Guide:
+  cd auto_calibration
+  mkdir build
+  cd build
+  cmake ../
+  make
