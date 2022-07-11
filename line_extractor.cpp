@@ -461,15 +461,15 @@ cv::waitKey(0);
 }
 
 void oneview_extract_line(cv::Mat *img, cv::Mat *birdeye_img, CalibParams* camera, CalibParams* camera_v, one_frame_lines_set* res, vanishing_pts* v_pts) {
-    //birdeye_oneview_transform(img, birdeye_img, camera, camera_v);
+    birdeye_oneview_transform(img, birdeye_img, camera, camera_v);
 
-    cv::Mat camera_intrinsic;
-    cv::Mat camera_dist_coeffs;
-    init_intrinsic(camera, &camera_intrinsic, &camera_dist_coeffs);
-    undistortFisheye(*img, camera_intrinsic, camera_dist_coeffs, get_extrinsic_mat(camera), *birdeye_img);
-cv::imshow("birdeye_img.png", *birdeye_img);
-cv::imwrite("birdeye_img.png", *birdeye_img);
-cv::waitKey(0);
+//     cv::Mat camera_intrinsic;
+//     cv::Mat camera_dist_coeffs;
+//     init_intrinsic(camera, &camera_intrinsic, &camera_dist_coeffs);
+//     undistortFisheye(*img, camera_intrinsic, camera_dist_coeffs, get_extrinsic_mat(camera), *birdeye_img);
+// cv::imshow("birdeye_img.png", *birdeye_img);
+// cv::imwrite("birdeye_img.png", *birdeye_img);
+// cv::waitKey(0);
 
     // //convert bgr to gray
     // cv::Mat birdeye_gray;
@@ -491,8 +491,8 @@ cv::waitKey(0);
 }
 
 cv::Mat ground_stitch(cv::Mat img_GF, cv::Mat img_GL,
-	cv::Mat img_GB, cv::Mat img_GR,
-	int rows, int cols)
+    cv::Mat img_GB, cv::Mat img_GR,
+    int rows, int cols)
 {
 
 	cv::Mat img_G(rows, cols, CV_8UC3);
@@ -763,14 +763,15 @@ void radian_to_angle(double rad, double ang[])
 }
 
 
+//to do:
 Sophus::SE3 get_TCG(CalibParams* camera) {
-    Eigen::Vector3d t_CG(camera->camera_x, camera->camera_y, camera->camera_z);
+    Eigen::Vector3d t_CG(camera->camera_y, -camera->camera_x, -camera->camera_z);
     //change x and y
-    Eigen::AngleAxisd v1(M_PI/2, Eigen::Vector3d::UnitZ());//rotate 90 degrees around z ---> change x and y
-    Eigen::AngleAxisd v2(M_PI, Eigen::Vector3d::UnitX());//rotate 180 degrees around x ---> change -y to +y
-    t_CG = v2.matrix()*v1.matrix()*t_CG;
+    // Eigen::AngleAxisd v1(M_PI/2, Eigen::Vector3d::UnitZ());//rotate 90 degrees around z ---> change x and y
+    // Eigen::AngleAxisd v2(M_PI, Eigen::Vector3d::UnitX());//rotate 180 degrees around x ---> change -y to +y
+    // t_CG = v2.matrix()*v1.matrix()*t_CG;
 
-    Eigen::Vector3d ea_CG(angle_to_radian(-camera->yaw), angle_to_radian(-camera->roll), angle_to_radian(-camera->pitch));
+    Eigen::Vector3d ea_CG(angle_to_radian(camera->yaw), angle_to_radian(camera->roll), angle_to_radian(-camera->pitch));
     Eigen::Matrix3d R_CG = Eigen::Matrix3d();//rotation matrix
     R_CG = Eigen::AngleAxisd(ea_CG[0], Eigen::Vector3d::UnitZ()) *
            Eigen::AngleAxisd(ea_CG[1], Eigen::Vector3d::UnitY()) *
@@ -778,6 +779,8 @@ Sophus::SE3 get_TCG(CalibParams* camera) {
 
     t_CG = t_CG;
     Sophus::SE3 T_CG = Sophus::SE3(R_CG,t_CG);
+    cout << "T_CG:" << T_CG.matrix() << endl;
+    cout << "T_CG.inverse():" << T_CG.inverse().matrix() << endl;
     return T_CG.inverse();
 }
 

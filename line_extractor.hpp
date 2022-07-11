@@ -330,6 +330,7 @@ void oneview_extract_line(cv::Mat *img, cv::Mat *birdeye_img, CalibParams* camer
 
 Mat eulerAnglesToRotationMatrix(Vec3f &theta);
 double angle_to_radian(double degree, double min=0, double second=0);
+cv::Mat ground_stitch(cv::Mat img_GF, cv::Mat img_GL, cv::Mat img_GB, cv::Mat img_GR, int rows, int cols);
 
 #endif /* line_extractor_hpp */
 

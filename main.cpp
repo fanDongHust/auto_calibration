@@ -21,7 +21,7 @@ const double dis_coeff_1=0.01112126630599195;
 const double dis_coeff_2=-0.008587261043925865;
 const double dis_coeff_3=0.0008542188930970716;
 const double front_camera_x=3.1367766857147217;
-const double front_camera_y=-0.0018368728924542665;
+const double front_camera_y=0;//-0.0018368728924542665;
 const double front_camera_z=1.049095630645752;
 const double front_camera_yaw=0;
 const double front_camera_roll=0;
@@ -34,8 +34,8 @@ const double left_camera_yaw=-90.0;
 const double left_camera_roll=0;
 const double left_camera_pitch=-45;
 
-const double rear_camera_x=3.1367766857147217;
-const double rear_camera_y=-0.0018368728924542665;
+const double rear_camera_x=-3.1367766857147217;
+const double rear_camera_y=0;//-0.0018368728924542665;
 const double rear_camera_z=1.049095630645752;
 const double rear_camera_yaw=180;
 const double rear_camera_roll=0;
@@ -60,7 +60,11 @@ const double birdeye_cv=avm_h/2;
  * all_img: a pointer to all four fisheye images
  */
 void birdeye_transform(Mat *all_img, camera_set* cameras, camera_set* camera_v, vector<one_frame_lines_set>* multi_frame_set, vector<vanishing_pts>* vanishing_pts_set);
-
+/* simulate the initial pose changes of four cameras
+ *
+ * cameras: a pointer to camera_set struct holding parameters of all four cameras
+ */
+bool BlurPose(camera_set* cameras);
 
 int main() {
     
@@ -123,6 +127,9 @@ int main() {
     cameras->left = left;
     cameras->right = right;
     print_calib_params(cameras->front);
+    BlurPose(cameras);
+    print_calib_params(cameras->front);
+
     cameras_v->front = front_v;
     cameras_v->rear = rear_v;
     cameras_v->left = left_v;
@@ -212,13 +219,14 @@ void birdeye_transform(Mat* all_img, camera_set* cameras, camera_set* camera_v, 
             oneview_extract_line(&img_crop, &birdeye_right, cameras->right, camera_v->right, res, v_pts);
         }
     }
-    // birdeye_img = ground_stitch(birdeye_front, birdeye_left, birdeye_rear, birdeye_right, avm_h, avm_w);
-    // cv::imwrite("birdeye_front.png", birdeye_front);
-    // cv::imwrite("birdeye_left.png", birdeye_left);
-    // cv::imwrite("birdeye_rear.png", birdeye_rear);
-    // cv::imwrite("birdeye_right.png", birdeye_right);
-    // cv::imshow("birdeye_img.png", birdeye_img);
-    // cv::waitKey(0);
+// preview the stitch result
+    birdeye_img = ground_stitch(birdeye_front, birdeye_left, birdeye_rear, birdeye_right, avm_h, avm_w);
+    //cv::imwrite("birdeye_front.png", birdeye_front);
+    //cv::imwrite("birdeye_left.png", birdeye_left);
+    //cv::imwrite("birdeye_rear.png", birdeye_rear);
+    //cv::imwrite("birdeye_right.png", birdeye_right);
+    cv::imshow("birdeye_img.png", birdeye_img);
+    cv::waitKey(0);
     multi_frame_set->push_back(*res);
     vanishing_pts_set->push_back(*v_pts);
     
@@ -287,4 +295,15 @@ void birdeye_transform(Mat* all_img, camera_set* cameras, camera_set* camera_v, 
 //    }
 //    cv::imshow("line extractor res", img_final);
 
+}
+
+//modify the yaw and pitch, unit:angle
+//to do:
+//generate random number ranges from -5 to +5
+bool BlurPose(camera_set* cameras)
+{
+    //front camera
+    cameras->front->pitch += 3;
+    cameras->front->yaw += 3;
+    cameras->front->roll = 0;
 }
