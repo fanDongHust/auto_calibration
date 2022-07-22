@@ -12,11 +12,15 @@ find_package( OpenCV 3.1 REQUIRED )
 find_package( Sophus REQUIRED )
 set(Sophus_LIBRARIES libSophus.so)
 
+find_package(Ceres REQUIRED)
+
+
 include_directories( 
     ${OpenCV_INCLUDE_DIRS}
 #    ${G2O_INCLUDE_DIRS}
     "/usr/include/eigen3/"
 	${Sophus_INCLUDE_DIRS}
+    ${CERES_INCLUDE_DIRS}
 )
 
 
@@ -31,11 +35,13 @@ target_link_libraries(line_extractor
 	${Sophus_LIBRARIES}
 )
 
-#add_library(calibration calibration.cpp)
-#add_library(calibrationShared SHARED calibration.cpp)
-#target_link_libraries(calibration 
-#	${OpenCV_LIBS}
-#	${Sophus_LIBRARIES})
+add_library(calibration calibration.cpp)
+add_library(calibrationShared SHARED calibration.cpp)
+target_link_libraries(calibration 
+	${OpenCV_LIBS}
+	${Sophus_LIBRARIES}
+    ${CERES_LIBRARIES}
+)
 
 	
 
@@ -45,7 +51,7 @@ target_link_libraries(main
 #	${G2O_LIBS}
 #	g2o_core
 	line_extractor
-#	calibration
+	calibration
 #	${Sophus_LIBRARIES}
 )
 	

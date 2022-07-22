@@ -80,81 +80,30 @@ void print_calib_params(CalibParams* camera) {
 
 one_frame_lines_set* one_frame_set_new() {
     one_frame_lines_set* lines = new one_frame_lines_set;
+    // //to do:
+    // lines->orig_lines = new one_frame_lines;
+    // lanemarks lane_l;
+    // lane_l.rising_edge = Vec4f(0,0,0,0);
+    // lane_l.falling_edge = Vec4f(0,0,0,0);
+    // lines->orig_lines->front_lanes.push_back(lane_l);
+    // lanemarks lane_r;
+    // lane_r.rising_edge = Vec4f(0,0,0,0);
+    // lane_r.falling_edge = Vec4f(0,0,0,0);
+    // lines->orig_lines->front_lanes.push_back(lane_r);
+    // cout << "delia test:\n";
+    // cout << "lines->orig_lines->front_lanes.lane_l" << lines->orig_lines->front_lanes[0].rising_edge << "\n";
+    // cout << "lines->orig_lines->front_lanes.lane_l" << lines->orig_lines->front_lanes[0].falling_edge << "\n";
+    // cout << "lines->orig_lines->front_lanes.lane_r" << lines->orig_lines->front_lanes[1].rising_edge << "\n";
+    // cout << "lines->orig_lines->front_lanes.lane_r" << lines->orig_lines->front_lanes[1].falling_edge << "\n";
     return lines;
 }
 
 void init_intrinsic(CalibParams* camera, Mat* cam_matrix, Mat* dist_coeffs) {
+    //cout << "init intrinsic:\n";
     *cam_matrix = (Mat_<double>(3,3)<<camera->fu, 0.0, camera->cu, 0.0, camera->fv, camera->cv, 0.0, 0.0, 1.0);
     *dist_coeffs = (Mat_<double>(4,1)<<camera->dist_coeffs_0, camera->dist_coeffs_1, camera->dist_coeffs_2, camera->dist_coeffs_3);
 }
 
-cv::Mat get_extrinsic_mat(CalibParams* camera) {
-    //for camera, pitch ( around x ) , yaw ( around y ) ,  roll(around z )
-    //camera coordinate:
-    //camera center: O(0,0,0)
-    //camera LookAt: +Z
-    //camera Right:  +X
-    //camera Left:   +Y
-    //around the X axis: pitch
-    //around the Y axis: yaw
-    //around the Z axis: roll
-    cv::Vec3f theta = 
-    //cv::Vec3f(angle_to_radian(0), 0, 0);//if not rotate, the result is fisheye undistorted?
-    //cv::Vec3f(angle_to_radian(45), 0, 0);
-    //cv::Vec3f(angle_to_radian(45), 0, angle_to_radian(-90));
-    cv::Vec3f(angle_to_radian(camera->pitch), angle_to_radian(camera->yaw), angle_to_radian(camera->roll));
-    cv::Mat mat_R = eulerAnglesToRotationMatrix(theta);
-    // º∆À„µ√µΩextrinsic_matrix_
-    //cv::Mat euler = 
-    //(cv::Mat_<double>(3, 1) << angle_to_radian(45), 0, 0);//front
-    //(cv::Mat_<double>(3, 1) << (45.0f * M_PI)/180, 0, (45.0f * M_PI)/180);//left
-    //(cv::Mat_<double>(3, 1) << angle_to_radian(0), 0, angle_to_radian(0));
-    //(cv::Mat_<double>(3, 1) << angle_to_radian(camera->pitch), angle_to_radian(camera->yaw), angle_to_radian(camera->roll));
-    //(cv::Mat_<double>(3, 1) << extrinsic.pitch, extrinsic.yaw, extrinsic.roll);
-
-
-    // cout << "euler:\n" << euler << endl;
-    // cv::Mat mat_R;
-    // cv::Rodrigues(euler, mat_R, cv::noArray());//not what i understand
-
-
-    // cout << "delia test:\n";
-    // cout << "mat_R:\n" << mat_R << endl;//3.1367766857147217, -0.0018368728924542665, 1.049095630645752
-    //cv::Mat mat_T =
-    //(cv::Mat_<double>(3, 1) << 0,0,-1.04);//move fisheye camera
-    //(cv::Mat_<double>(3, 1) << 0,-3.13,-1.04);//front
-    //(cv::Mat_<double>(3, 1) << 1.19,0,-1.04);//left
-    //(cv::Mat_<double>(3, 1) << 0,3.13,-1.04);//rear
-    //(cv::Mat_<double>(3, 1) << -1.19,0,-1.04);//right
-    //(cv::Mat_<double>(3, 1) << 3.1367766857147217, -0.0018368728924542665, 1.049095630645752);//front
-    //     //camera->tvecs;
-    //     //(cv::Mat_<double>(3, 1) << extrinsic_.X, extrinsic_.Y, extrinsic_.Z);
-    //cout << "mat_T:\n" << mat_T << endl;
-    
-
-    theta  = cv::Vec3f(angle_to_radian(180), 0, angle_to_radian(90));
-    cv::Mat mat_R2 = eulerAnglesToRotationMatrix(theta);
-    //cv::Rodrigues(euler2, mat_R2, cv::noArray());
-    cv::Mat mat_T2 = 10*(cv::Mat_<double>(3, 1) << camera->camera_x, camera->camera_y, camera->camera_z);
-    cout << "mat_T2:\n" << mat_T2 << endl;
-    //mat_T2 = mat_R2*mat_T2;
-    //cout << "mat_R2*mat_T2:\n" << mat_T2 << endl;
-
-    // cv::Mat mat_T3 = (cv::Mat_<double>(3, 1) << 0-camera->tvecs.at<double>(1), 0-camera->tvecs.at<double>(0), 0-camera->tvecs.at<double>(2));
-    // cout << "mat_T3:\n" << mat_T3 << endl;
-
-    cv::Mat mat_RT;
-    cv::hconcat(mat_R, mat_T2, mat_RT);
-    cout << "mat_RT:\n" << mat_RT << endl;
-    //[R T; 0 1]
-    cv::Mat mat_01 = (cv::Mat_<double>(1, 4) << 0, 0, 0, 1);
-    cv::Mat mat_RT01;
-    cv::vconcat(mat_RT, mat_01, mat_RT01);
-    cout << "mat_RT01:\n" << mat_RT01 << endl;
-    cv::Mat mat_RT01_inv;
-    cv::invert(mat_RT01, mat_RT01_inv);
-    return mat_RT01_inv;//mat_RT01.inv();
-}
 
 
 void undistortFisheye(const cv::Mat &image_in, cv::Mat camera_intrinsic_matrix, cv::Vec4d distort_coeff_matrix, cv::Mat camera_extrinsic_matrix, cv::Mat &image_out) {
@@ -225,7 +174,7 @@ void undistortFisheye(const cv::Mat &image_in, cv::Mat camera_intrinsic_matrix, 
 
     cv::Mat correct_image;
     cv::remap(image_in, image_out, map1, map2, cv::INTER_LINEAR);
-cout << "newCamMat:" << newCamMat << endl;
+//cout << "newCamMat:" << newCamMat << endl;
 //cv::imshow("image_out.png", image_out);
 //cv::imwrite("image_out.png", image_out);
 //cv::waitKey(0);
@@ -336,7 +285,8 @@ int CalculateRawPitch(const CameraIntrinsic &intrinsic,
   return 0;
 }
 
-void oneview_extract_line(cv::Mat *img, cv::Mat *birdeye_img, CalibParams* camera, CalibParams* camera_v)
+bool oneview_extract_line(cv::Mat *img, CalibParams* camera, CalibParams* camera_v,
+        std::vector<LaneCoef> &lane_coefs_each_image, VanishPoint &vanish_point_tmp, float &pitch_raw_tmp)
 {
     cv::Mat camera_intrinsic;
     cv::Mat camera_dist_coeffs;
@@ -360,7 +310,7 @@ void oneview_extract_line(cv::Mat *img, cv::Mat *birdeye_img, CalibParams* camer
 //cv::rectangle(image_undistort, cv::Rect(roi_data.width_top, roi_data.height_min, roi_data.width_bottom-roi_data.width_top, roi_data.height_max-roi_data.height_min), cv::Scalar(255, 0, 0), 1);
 cv::imshow("image_undistort.png", image_undistort);
 cv::imwrite("image_undistort.png", image_undistort);
-cv::waitKey(0);
+cv::waitKey(30);
 
     CameraIntrinsic intrinsic;
     intrinsic.fx = 103.5691546824274;//camera->K.at<double>(0,0);
@@ -389,7 +339,7 @@ cv::waitKey(0);
 
 cv::imshow("image_undistort.png", image_undistort);
 //cv::imwrite("image_undistort.png", image_undistort);
-cv::waitKey(0);
+cv::waitKey(30);
 
     // lane_kb : save two lane marking k and b
     float lane_kb[4] = {0.0f};
@@ -414,7 +364,7 @@ cv::waitKey(0);
     lane_kb[3] = b;
 
 
-    std::vector<LaneCoef> lane_coefs_each_image;
+    //std::vector<LaneCoef> lane_coefs_each_image;
     std::cout << "k1: " << lane_kb[0] << "  b1: " << lane_kb[1] << std::endl;
     std::cout << "k2: " << lane_kb[2] << "  b2: " << lane_kb[3] << std::endl;
     LaneCoef lane_coef_left;
@@ -427,6 +377,25 @@ cv::waitKey(0);
     lane_coef_right.coef_b = lane_kb[3];
     lane_coefs_each_image.push_back(lane_coef_left);
     lane_coefs_each_image.push_back(lane_coef_right);   
+
+    // return vanishing point-inter
+    cv::Point2f inter;
+    //float pitch_raw;
+
+    CalculateRawPitch(intrinsic, lane_coefs_each_image, inter, pitch_raw_tmp);
+    cout << "pitch_raw=" << pitch_raw_tmp << endl;
+    cout << "inter=" << inter << endl;
+    // vanishing point-y
+    // lane_data.inter_v = inter.y;
+    vanish_point_tmp.valid = true;
+    vanish_point_tmp.x = inter.x;
+    vanish_point_tmp.y = inter.y;
+
+    if(std::isnan(pitch_raw_tmp)) {
+        //std::cout << "failed to detect lane: index " << frame_no << std::endl;
+        std::cout << " Can not detect lane " << std::endl;
+        return false;
+    }
 
 //draw lane
 //y is row number, x is col number
@@ -441,21 +410,19 @@ cv::waitKey(0);
     }
 cv::imshow("image_undistort_lane.png", image_undistort);
 cv::imwrite("image_undistort_lane.png", image_undistort);
-cv::waitKey(0);
+cv::waitKey(30);
 
 
-    // return vanishing point-inter
-    cv::Point2f inter;
-    float pitch_raw;
 
-    CalculateRawPitch(intrinsic, lane_coefs_each_image, inter, pitch_raw);
-    cout << "pitch_raw=" << pitch_raw << endl;
-    cout << "inter=" << inter << endl;
+
     cv::circle(image_undistort, inter, 2, cv::Scalar(0, 0, 255), 2, CV_AA);
 
 cv::imshow("image_undistort_lane_inter.png", image_undistort);
 cv::imwrite("image_undistort_lane_inter.png", image_undistort);
-cv::waitKey(0);
+cv::waitKey(30);
+
+
+    return true;
 
 
 }
@@ -478,8 +445,22 @@ void oneview_extract_line(cv::Mat *img, cv::Mat *birdeye_img, CalibParams* camer
 
     //Extracts lanemarks
 
+    //just for test:
+    res->orig_lines = new one_frame_lines;
+    lanemarks lane_l;
+    lane_l.rising_edge = Vec4f(0,0,0,0);
+    lane_l.falling_edge = Vec4f(0,0,0,0);
+    res->orig_lines->front_lanes.push_back(lane_l);
+    lanemarks lane_r;
+    lane_r.rising_edge = Vec4f(0,0,0,0);
+    lane_r.falling_edge = Vec4f(0,0,0,0);
+    res->orig_lines->front_lanes.push_back(lane_r);
 
-
+    cout << "delia test 2:\n";
+    cout << "res->orig_lines->front_lanes.lane_l" << res->orig_lines->front_lanes[0].rising_edge << "\n";
+    cout << "res->orig_lines->front_lanes.lane_l" << res->orig_lines->front_lanes[0].falling_edge << "\n";
+    cout << "res->orig_lines->front_lanes.lane_r" << res->orig_lines->front_lanes[1].rising_edge << "\n";
+    cout << "res->orig_lines->front_lanes.lane_r" << res->orig_lines->front_lanes[1].falling_edge << "\n";
 
 
 
@@ -532,77 +513,77 @@ cv::Mat ground_stitch(cv::Mat img_GF, cv::Mat img_GL,
 	return img_G;
 }
 
-//T_CG: ??
-// cv::Mat project_on_ground(cv::Mat img, cv::Mat T_CG, cv::Mat K_C, cv::Mat D_C, cv::Mat K_G, int rows, int cols) {
-//     // 	cout<<"--------------------Init p_G and P_G------------------------"<<endl;
-//     //For a point pG = [uG, vG, 1]T in the bird°Øs - eye - view image
-//     cv::Mat p_G = cv::Mat::ones(3, rows * cols, CV_64FC1);
-//     for (int i = 0;i < rows;i++)
-//     {
-//         for (int j = 0;j < cols;j++)
-//         {
-//             p_G.at<double>(0, cols * i + j) = j;//x, col number
-//             p_G.at<double>(1, cols * i + j) = i;//y, row number
-//             //p_G.at<double>(2, cols * i + j) = 1;//1
-//         }
-//     }
-//     //cout << "p_G: " << endl;
-//     //cout << p_G(cv::Rect(0, 0, 100, 3)) << endl << endl;
+
+cv::Mat project_on_ground(cv::Mat img, cv::Mat T_CG, cv::Mat K_C, cv::Mat D_C, cv::Mat K_G, int rows, int cols) {
+    // 	cout<<"--------------------Init p_G and P_G------------------------"<<endl;
+    //For a point pG = [uG, vG, 1]T in the bird°Øs - eye - view image
+    cv::Mat p_G = cv::Mat::ones(3, rows * cols, CV_64FC1);
+    for (int i = 0;i < rows;i++)
+    {
+        for (int j = 0;j < cols;j++)
+        {
+            p_G.at<double>(0, cols * i + j) = j;//x, col number
+            p_G.at<double>(1, cols * i + j) = i;//y, row number
+            //p_G.at<double>(2, cols * i + j) = 1;//1
+        }
+    }
+    //cout << "p_G: " << endl;
+    //cout << p_G(cv::Rect(0, 0, 100, 3)) << endl << endl;
 
 
-//     //For a point, PG = [XG, YG, ZG, 1]T in OG, ZG = 0
-//     cv::Mat P_G = cv::Mat::ones(4, rows * cols, CV_64FC1);
-//     P_G(cv::Rect(0, 0, rows * cols, 3)) = K_G.inv() * p_G;//pG = KG*PG
-//     P_G(cv::Rect(0, 2, rows * cols, 1)) = 0;//ZG = 0
-//     //P_G(cv::Rect(0, 3, rows * cols, 1)) = 1;//1
+    //For a point, PG = [XG, YG, ZG, 1]T in OG, ZG = 0
+    cv::Mat P_G = cv::Mat::ones(4, rows * cols, CV_64FC1);
+    P_G(cv::Rect(0, 0, rows * cols, 3)) = K_G.inv() * p_G;//pG = KG*PG
+    P_G(cv::Rect(0, 2, rows * cols, 1)) = 0;//ZG = 0
+    //P_G(cv::Rect(0, 3, rows * cols, 1)) = 1;//1
 
-//     // 	cout<<"--------------------Init P_GC------------------------"<<endl;
-//     //cout << "P_GC: " << endl;
-//     //cout << P_G(cv::Rect(0, 0, 100, 4)) << endl << endl;
+    // 	cout<<"--------------------Init P_GC------------------------"<<endl;
+    //cout << "P_GC: " << endl;
+    //cout << P_G(cv::Rect(0, 0, 100, 4)) << endl << endl;
 
-//     // the pixel coordinate pCi of PG in the ith camera Ci
-//     cv::Mat P_GC = cv::Mat::zeros(4, rows * cols, CV_64FC1);
-//     cout << "T_CG:" << T_CG << endl;
-//     P_GC = T_CG * P_G;//.t() 
-//     //cout << "P_GC: " << endl;
-//     //cout << P_GC(cv::Rect(0, 0, 100, 4)) << endl << endl;
-//     //cout << P_GC(cv::Rect(0, 2, 100, 2)) << endl << endl;
+    // the pixel coordinate pCi of PG in the ith camera Ci
+    cv::Mat P_GC = cv::Mat::zeros(4, rows * cols, CV_64FC1);
+    cout << "T_CG:" << T_CG << endl;
+    P_GC = T_CG * P_G;//.t() 
+    //cout << "P_GC: " << endl;
+    //cout << P_GC(cv::Rect(0, 0, 100, 4)) << endl << endl;
+    //cout << P_GC(cv::Rect(0, 2, 100, 2)) << endl << endl;
 
-//     // 	cout<<"--------------------Init P_GC1------------------------"<<endl;
-//     cv::Mat P_GC1 = cv::Mat::zeros(1, rows * cols, CV_64FC2);//???
-//     vector<cv::Mat> channels;
-//     //channels.resize(2);
-//     //cv::Mat channels[2];
-//     cv::split(P_GC1, channels);
-//     channels[0] = P_GC(cv::Rect(0, 0, rows * cols, 1)) / P_GC(cv::Rect(0, 2, rows * cols, 1));
-//     channels[1] = P_GC(cv::Rect(0, 1, rows * cols, 1)) / P_GC(cv::Rect(0, 2, rows * cols, 1));
-//     cv::merge(channels, P_GC1);
-//     //cout << "P_GC1: " << endl;
-//     //cout << P_GC1(cv::Rect(0, 0, 5, 1)) << endl << endl;
+    // 	cout<<"--------------------Init P_GC1------------------------"<<endl;
+    cv::Mat P_GC1 = cv::Mat::zeros(1, rows * cols, CV_64FC2);//???
+    vector<cv::Mat> channels;
+    //channels.resize(2);
+    //cv::Mat channels[2];
+    cv::split(P_GC1, channels);
+    channels[0] = P_GC(cv::Rect(0, 0, rows * cols, 1)) / P_GC(cv::Rect(0, 2, rows * cols, 1));
+    channels[1] = P_GC(cv::Rect(0, 1, rows * cols, 1)) / P_GC(cv::Rect(0, 2, rows * cols, 1));
+    cv::merge(channels, P_GC1);
+    //cout << "P_GC1: " << endl;
+    //cout << P_GC1(cv::Rect(0, 0, 5, 1)) << endl << endl;
 
-//     // 	cout<<"--------------------Init p_GC------------------------"<<endl;
-//     //For a point pGC = [uGC, vGC, 1]T in the fish eye - view image
-//     cv::Mat p_GC = cv::Mat::zeros(1, rows*cols, CV_64FC2);//???rows * cols
+    // 	cout<<"--------------------Init p_GC------------------------"<<endl;
+    //For a point pGC = [uGC, vGC, 1]T in the fish eye - view image
+    cv::Mat p_GC = cv::Mat::zeros(1, rows*cols, CV_64FC2);//???rows * cols
 
-//     vector<double> D_C_{ D_C.at<double>(0),D_C.at<double>(1),D_C.at<double>(2),D_C.at<double>(3) };
-//     cv::fisheye::distortPoints(P_GC1, p_GC, K_C, D_C_);
-//     //cout << "p_GC: " << endl;
-//     p_GC.reshape(rows, cols);
-//     cv::Mat p_GC_table = p_GC.reshape(0, rows);
-//     //vector<cv::Mat> p_GC_table_channels(2);
-//     cv::Mat p_GC_table_channels[2];
-//     cv::split(p_GC_table, p_GC_table_channels);
+    vector<double> D_C_{ D_C.at<double>(0),D_C.at<double>(1),D_C.at<double>(2),D_C.at<double>(3) };
+    cv::fisheye::distortPoints(P_GC1, p_GC, K_C, D_C_);
+    //cout << "p_GC: " << endl;
+    p_GC.reshape(rows, cols);
+    cv::Mat p_GC_table = p_GC.reshape(0, rows);
+    //vector<cv::Mat> p_GC_table_channels(2);
+    cv::Mat p_GC_table_channels[2];
+    cv::split(p_GC_table, p_GC_table_channels);
 
-//     cv::Mat p_GC_table_32F;
-//     p_GC_table.convertTo(p_GC_table_32F, CV_32FC2);
+    cv::Mat p_GC_table_32F;
+    p_GC_table.convertTo(p_GC_table_32F, CV_32FC2);
 
-//     cv::Mat img_GC;
-//     cv::remap(img, img_GC, p_GC_table_32F, cv::Mat(), cv::INTER_LINEAR);
-//     // 	img_GC = bilinear_interpolation(img,p_GC_table,rows,cols);
-//     // 	cout<<img_GC.size<<endl;
+    cv::Mat img_GC;
+    cv::remap(img, img_GC, p_GC_table_32F, cv::Mat(), cv::INTER_LINEAR);
+    //img_GC = bilinear_interpolation(img,p_GC_table,rows,cols);
+    //cout<<img_GC.size<<endl;
 
-//     return img_GC;
-// }
+    return img_GC;
+}
 
 
 cv::Mat project_on_ground(cv::Mat img, Sophus::SE3 T_CG,
@@ -763,19 +744,66 @@ void radian_to_angle(double rad, double ang[])
 }
 
 
+cv::Mat get_extrinsic_mat(CalibParams* camera) {
+    //for camera, pitch ( around x ) , yaw ( around y ) ,  roll(around z )
+    //camera coordinate:
+    //camera center: O(0,0,0)
+    //camera LookAt: +Z (pointing forward)
+    //camera Right:  +X (pointing right)
+    //camera Down:   +Y (pointing down)
+    //around the X axis: pitch
+    //around the Y axis: yaw
+    //around the Z axis: roll
+    //we show change roll and yaw, because the top view camera coordinate, +Z pointing down, -Y pointing forward
+    cv::Vec3f theta = 
+    //cv::Vec3f(angle_to_radian(0), 0, 0);//if not rotate, the result is fisheye undistorted?
+    cv::Vec3f(angle_to_radian(-camera->pitch), angle_to_radian(camera->roll), angle_to_radian(camera->yaw));
+    cv::Mat mat_R = eulerAnglesToRotationMatrix(theta);
+
+    //cv::Mat euler = 
+    //(cv::Mat_<double>(3, 1) << angle_to_radian(-camera->pitch), angle_to_radian(camera->roll), angle_to_radian(camera->yaw));
+    // cout << "euler:\n" << euler << endl;
+    // cv::Mat mat_R;
+    // cv::Rodrigues(euler, mat_R, cv::noArray());//not what i understand
+    // cout << "delia test:\n";
+    // cout << "mat_R:\n" << mat_R << endl;
+
+
+    cv::Mat mat_T =
+    (cv::Mat_<double>(3, 1) << camera->camera_y, -camera->camera_x, -camera->camera_z);
+    //cout << "mat_T:\n" << mat_T << endl;
+
+    cv::Mat mat_RT;
+    cv::hconcat(mat_R, mat_T, mat_RT);
+    //cout << "mat_RT:\n" << mat_RT << endl;
+    //[R T; 0 1]
+    cv::Mat mat_01 = (cv::Mat_<double>(1, 4) << 0, 0, 0, 1);
+    cv::Mat mat_RT01;
+    cv::vconcat(mat_RT, mat_01, mat_RT01);
+    cout << "mat_RT01:\n" << mat_RT01 << endl;
+    cv::Mat mat_RT01_inv;
+    cv::invert(mat_RT01, mat_RT01_inv);
+    cout << "mat_RT01_inv:\n" << mat_RT01_inv << endl;
+    return mat_RT01.inv();//mat_RT01_inv;//
+}
+
+
 //to do:
 Sophus::SE3 get_TCG(CalibParams* camera) {
     Eigen::Vector3d t_CG(camera->camera_y, -camera->camera_x, -camera->camera_z);
-    //change x and y
-    // Eigen::AngleAxisd v1(M_PI/2, Eigen::Vector3d::UnitZ());//rotate 90 degrees around z ---> change x and y
-    // Eigen::AngleAxisd v2(M_PI, Eigen::Vector3d::UnitX());//rotate 180 degrees around x ---> change -y to +y
-    // t_CG = v2.matrix()*v1.matrix()*t_CG;
 
     Eigen::Vector3d ea_CG(angle_to_radian(camera->yaw), angle_to_radian(camera->roll), angle_to_radian(-camera->pitch));
     Eigen::Matrix3d R_CG = Eigen::Matrix3d();//rotation matrix
     R_CG = Eigen::AngleAxisd(ea_CG[0], Eigen::Vector3d::UnitZ()) *
            Eigen::AngleAxisd(ea_CG[1], Eigen::Vector3d::UnitY()) *
            Eigen::AngleAxisd(ea_CG[2], Eigen::Vector3d::UnitX());
+
+//delia test:
+    // cv::Vec3f theta = 
+    // cv::Vec3f(angle_to_radian(-camera->pitch), angle_to_radian(camera->roll), angle_to_radian(camera->yaw));
+    // cv::Mat mat_R = eulerAnglesToRotationMatrix(theta);
+    // cout << "mat_R:" << mat_R << endl;
+    // cout << "R_CG:" << R_CG << endl;
 
     t_CG = t_CG;
     Sophus::SE3 T_CG = Sophus::SE3(R_CG,t_CG);
@@ -824,8 +852,10 @@ cv::waitKey(0);
     // cv::imshow("image_birdeye.png", image_birdeye);
     // cv::waitKey(0);
 
-    //cv::Mat camera_T = get_extrinsic_mat(camera);
-
+    cv::Mat camera_T = get_extrinsic_mat(camera);
+    cv::Mat camera_intrinsic;
+    cv::Mat camera_dist_coeffs;
+    init_intrinsic(camera, &camera_intrinsic, &camera_dist_coeffs);
 
     // cv::Mat mat_T = (cv::Mat_<double>(4, 4) << 
     // 1, 0, 0, 0,
@@ -842,9 +872,10 @@ cv::waitKey(0);
     // cv::Mat homography = camera_v->K * ( mat_T * (mat_R * camera->K));
     // warpPerspective(*img, *birdeye_img, homography, cv::Size(avm_w, avm_h));
 
+
     *birdeye_img = 
-    //project_on_ground(*img, camera_T, camera->K, camera->D, camera_v->K, avm_h, avm_w);
-    project_on_ground(*img, get_TCG(camera), get_KC(camera), get_DC(camera), get_KC_Mat(camera_v), avm_h, avm_w);
+    project_on_ground(*img, camera_T, camera_intrinsic, camera_dist_coeffs, get_KC_Mat(camera_v), avm_h, avm_w);
+    //project_on_ground(*img, get_TCG(camera), get_KC(camera), get_DC(camera), get_KC_Mat(camera_v), avm_h, avm_w);
     //cv::circle(*birdeye_img, cv::Point2f(avm_w/2, avm_h/2), 1, cv::Scalar(255, 0, 255), 1);
     cv::imshow("img.png", *birdeye_img);
     cv::waitKey(0);
@@ -980,13 +1011,13 @@ void detect_line(const cv::Mat undistort_img,
     }
   }
   cv::drawContours(img_show_edge, roi_contour, -1, cv::Scalar(255, 0, 0), 1);
-  cv::imwrite("lane_edge.png", img_show_edge);
+  /*cv::imwrite("lane_edge.png", img_show_edge);
   cv::resize(img_show_edge, img_show_edge,
              cv::Size(img_show_edge.cols / 2, img_show_edge.rows / 2));
   cv::imshow("lane_edge.png", img_show_edge);
 
   cv::imshow("lane_edge", lane_edge);
-  cv::waitKey(0);
+  cv::waitKey(0);*/
 }
 
 
@@ -1062,6 +1093,22 @@ void rotation_homography(CalibParams* camera, Mat* R)
     * R = eulerAnglesToRotationMatrix(theta);
 }
 
+void translation_homography(CalibParams* camera, Mat* mat_R, Mat* mat_RT01)
+{
+    rotation_homography(camera, mat_R);
+    cv::Mat mat_T =
+    (cv::Mat_<double>(3, 1) << camera->camera_x, camera->camera_y, camera->camera_z);
+    //cout << "mat_T:\n" << mat_T << endl;
+
+    cv::Mat mat_RT;
+    cv::hconcat(*mat_R, mat_T, mat_RT);
+    //cout << "mat_RT:\n" << mat_RT << endl;
+    //[R T; 0 1]
+    cv::Mat mat_01 = (cv::Mat_<double>(1, 4) << 0, 0, 0, 1);
+    cv::vconcat(mat_RT, mat_01, *mat_RT01);
+    //cout << "mat_RT01:\n" << *mat_RT01 << endl;
+}
+
 // void fitLineRansac_deprecated(const std::vector<cv::Point>& points,
 //                   cv::Vec4f &line,
 //                   int iterations,
@@ -1099,3 +1146,14 @@ void rotation_homography(CalibParams* camera, Mat* R)
 //   line[2] = line_infomation[2];
 //   line[3] = line_infomation[3];
 // }
+
+
+CameraIntrinsic get_intrinsic(CalibParams* camera)
+{
+    CameraIntrinsic intrinsic;
+    intrinsic.fx = camera->fu;
+    intrinsic.fy = camera->fv;
+    intrinsic.cx = camera->cu;
+    intrinsic.cy = camera->cv;
+    return intrinsic;
+}

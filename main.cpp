@@ -12,6 +12,9 @@ using namespace std;
 //load from config file
 //from zyx to yxz?
 //CARLA sim data
+//camera_yaw, around y axis(pointing down). but for top view, z axis if pointing down.
+//camera_roll, around z axis(pointing forward). but for top view, -y axis if pointing forward.
+//camera_pitch, around x axis(pointing right). but for top view, x axis if pointing right. 
 const double fisheye_fu=320;
 const double fisheye_fv=320;
 const double fisheye_cu=640;
@@ -66,10 +69,16 @@ void birdeye_transform(Mat *all_img, camera_set* cameras, camera_set* camera_v, 
  */
 bool BlurPose(camera_set* cameras);
 
+void DetectLane(Mat *all_img, camera_set* cameras, camera_set* camera_v,
+        std::vector<std::vector<LaneCoef>> &lane_coefs, std::vector<VanishPoint> &vanish_point, std::vector<float> &pitch_raw);
+
+
+
 int main() {
     
     // read file
-    string path = "/home/deliadong/Job/SVS/hank/tesla-move/svs/1/tesla-move.mp4";
+    string path = "/home/deliadong/Job/SVS/hank/svs4/tesla-move.mp4";
+    ///home/deliadong/Job/SVS/hank/tesla-move/svs/1/tesla-move.mp4
     //fourinone_34997.jpg
     //"/home/deliadong/Job/SVS/alex/1/CamA_20211028_064436_2x2_4SVS.mp4";
     VideoCapture cap(path);
@@ -127,8 +136,8 @@ int main() {
     cameras->left = left;
     cameras->right = right;
     print_calib_params(cameras->front);
-    BlurPose(cameras);
-    print_calib_params(cameras->front);
+    //BlurPose(cameras);
+    //print_calib_params(cameras->front);
 
     cameras_v->front = front_v;
     cameras_v->rear = rear_v;
@@ -136,11 +145,16 @@ int main() {
     cameras_v->right = right_v;
    
     //cap.set(CAP_PROP_POS_FRAMES, 230);
-    int frame_num = 50;
-    
+    int frame_num = 100;//50
+    vector<one_frame_lines_set> multi_frame_set;
+    vector<vanishing_pts> vanishing_pts_set;
+
+
     while (true) {
-        vector<one_frame_lines_set> multi_frame_set;
-        vector<vanishing_pts> vanishing_pts_set;
+        std::vector<std::vector<LaneCoef>> lane_coefs;
+        std::vector<VanishPoint> vanish_point;
+        std::vector<float> pitch_raw;
+        cap.set(CAP_PROP_POS_FRAMES, 1);//delia
         for (int i = 0; i < frame_num; i ++) {
             cout << "i = " << i << endl;
             if(!cap.read(img)) {
@@ -150,14 +164,28 @@ int main() {
             // image size is [2560 x 1440]
             Mat img_crop, img_resize;
             
-            birdeye_transform(&img, cameras, cameras_v, &multi_frame_set, &vanishing_pts_set);
+            //birdeye_transform(&img, cameras, cameras_v, &multi_frame_set, &vanishing_pts_set);
+            DetectLane(&img, cameras, cameras_v, lane_coefs, vanish_point, pitch_raw);
 
             // cv::imshow("img.png", img);
             // cv::waitKey(0);
         }
-        // vanishing_pts final_vpts;
-        // cluster_vpt_set(&vanishing_pts_set, &final_vpts);
-        // bool result = calibration(frame_num, cameras_v, &multi_frame_set, &final_vpts);
+
+        std::cout << " Calculate Front Camera Extrinsic " << std::endl;
+        CameraRotationEuler rotation_angle;
+        bool result = calibration(frame_num, cameras_v, lane_coefs, vanish_point, pitch_raw, rotation_angle);
+        if(result == true) {
+            std::cout << " result [rad] " << std::endl;
+            std::cout << " pitch " << rotation_angle.pitch << std::endl;
+            std::cout << " yaw " << rotation_angle.yaw << std::endl;
+            std::cout << " roll " << rotation_angle.roll << " not calculate " << std::endl;
+        }
+
+
+        //vanishing_pts final_vpts;
+        // cluster_vpt_set(&vanishing_pts_set, &final_vpts);//to do
+        //final_vpts = vanishing_pts_set[0];
+        //bool result = calibration(frame_num, cameras_v, &multi_frame_set, &final_vpts);
         // if (result == true) {
         //     for (int i = 0; i < frame_num; i ++) {
         //         std::vector<lanemarks> lines_orig;
@@ -181,9 +209,11 @@ int main() {
         //         cv::waitKey(20);
         //     }
         // }
-        // cout << "one cycle" << endl;
+        cout << "one cycle" << endl;
     }
-    
+
+    //to do: memory release
+
     return 0;
   }
 
@@ -202,34 +232,36 @@ void birdeye_transform(Mat* all_img, camera_set* cameras, camera_set* camera_v, 
             img_crop = (*all_img)(roi);
             //oneview_extract_line(&img_crop, &birdeye_front, cameras->front, camera_v->front);
             oneview_extract_line(&img_crop, &birdeye_front, cameras->front, camera_v->front, res, v_pts);
-        } else if (i == 1) {
-            Rect roi(1280, 0, 1280, 720);
-            //resize((*all_img)(roi), img_crop, Size(1344, 968));
-            img_crop = (*all_img)(roi);
-            oneview_extract_line(&img_crop, &birdeye_left, cameras->left, camera_v->left, res, v_pts);
-        } else if (i == 2) {
-            Rect roi(0, 720, 1280, 720);
-            //resize((*all_img)(roi), img_crop, Size(1344, 968));
-            img_crop = (*all_img)(roi);
-            oneview_extract_line(&img_crop, &birdeye_rear, cameras->rear, camera_v->rear, res, v_pts);
-        } else if (i == 3) {
-            Rect roi(1280, 720, 1280, 720);
-            //resize((*all_img)(roi), img_crop, Size(1344, 968));
-            img_crop = (*all_img)(roi);
-            oneview_extract_line(&img_crop, &birdeye_right, cameras->right, camera_v->right, res, v_pts);
+        // } else if (i == 1) {
+        //     Rect roi(1280, 0, 1280, 720);
+        //     //resize((*all_img)(roi), img_crop, Size(1344, 968));
+        //     img_crop = (*all_img)(roi);
+        //     oneview_extract_line(&img_crop, &birdeye_left, cameras->left, camera_v->left, res, v_pts);
+        // } else if (i == 2) {
+        //     Rect roi(0, 720, 1280, 720);
+        //     //resize((*all_img)(roi), img_crop, Size(1344, 968));
+        //     img_crop = (*all_img)(roi);
+        //     oneview_extract_line(&img_crop, &birdeye_rear, cameras->rear, camera_v->rear, res, v_pts);
+        // } else if (i == 3) {
+        //     Rect roi(1280, 720, 1280, 720);
+        //     //resize((*all_img)(roi), img_crop, Size(1344, 968));
+        //     img_crop = (*all_img)(roi);
+        //     oneview_extract_line(&img_crop, &birdeye_right, cameras->right, camera_v->right, res, v_pts);
         }
     }
 // preview the stitch result
-    birdeye_img = ground_stitch(birdeye_front, birdeye_left, birdeye_rear, birdeye_right, avm_h, avm_w);
+    //birdeye_img = ground_stitch(birdeye_front, birdeye_left, birdeye_rear, birdeye_right, avm_h, avm_w);
     //cv::imwrite("birdeye_front.png", birdeye_front);
     //cv::imwrite("birdeye_left.png", birdeye_left);
     //cv::imwrite("birdeye_rear.png", birdeye_rear);
     //cv::imwrite("birdeye_right.png", birdeye_right);
-    cv::imshow("birdeye_img.png", birdeye_img);
-    cv::waitKey(0);
+    //cv::imshow("birdeye_img.png", birdeye_img);
+    //cv::waitKey(0);
     multi_frame_set->push_back(*res);
     vanishing_pts_set->push_back(*v_pts);
-    
+
+
+
 
 //    std::vector<lanemarks> lines_orig;
 //    lines_orig.insert(lines_orig.end(), res->orig_lines->front_lanes.begin(), res->orig_lines->front_lanes.end());
@@ -297,13 +329,56 @@ void birdeye_transform(Mat* all_img, camera_set* cameras, camera_set* camera_v, 
 
 }
 
+void DetectLane(Mat *all_img, camera_set* cameras, camera_set* camera_v,
+        std::vector<std::vector<LaneCoef>> &lane_coefs, std::vector<VanishPoint> &vanish_point, std::vector<float> &pitch_raw)
+{
+    Mat img_crop;
+    std::vector<LaneCoef> lane_coefs_each_image;
+    VanishPoint vanish_point_tmp;
+    float pitch_raw_tmp;
+    bool detect_ok = false;
+
+    for (int i = 0; i < 4; i++) {
+        if (i == 0) {
+            Rect roi(0, 0, 1280, 720);
+            //resize((*all_img)(roi), img_crop, Size(1344, 968));//why resize here?
+            img_crop = (*all_img)(roi);
+            detect_ok = oneview_extract_line(&img_crop, cameras->front, camera_v->front, lane_coefs_each_image, vanish_point_tmp, pitch_raw_tmp);
+            //oneview_extract_line(&img_crop, &birdeye_front, cameras->front, camera_v->front, res, v_pts);
+        // } else if (i == 1) {
+        //     Rect roi(1280, 0, 1280, 720);
+        //     //resize((*all_img)(roi), img_crop, Size(1344, 968));
+        //     img_crop = (*all_img)(roi);
+        //     oneview_extract_line(&img_crop, &birdeye_left, cameras->left, camera_v->left, res, v_pts);
+        // } else if (i == 2) {
+        //     Rect roi(0, 720, 1280, 720);
+        //     //resize((*all_img)(roi), img_crop, Size(1344, 968));
+        //     img_crop = (*all_img)(roi);
+        //     oneview_extract_line(&img_crop, &birdeye_rear, cameras->rear, camera_v->rear, res, v_pts);
+        // } else if (i == 3) {
+        //     Rect roi(1280, 720, 1280, 720);
+        //     //resize((*all_img)(roi), img_crop, Size(1344, 968));
+        //     img_crop = (*all_img)(roi);
+        //     oneview_extract_line(&img_crop, &birdeye_right, cameras->right, camera_v->right, res, v_pts);
+        }
+    }
+    if(detect_ok) {
+        lane_coefs.push_back(lane_coefs_each_image);
+        vanish_point.push_back(vanish_point_tmp);
+        pitch_raw.push_back(pitch_raw_tmp);
+    }
+}
+
+
+
 //modify the yaw and pitch, unit:angle
 //to do:
 //generate random number ranges from -5 to +5
+//yaw? roll?
 bool BlurPose(camera_set* cameras)
 {
     //front camera
     cameras->front->pitch += 3;
-    cameras->front->yaw += 3;
-    cameras->front->roll = 0;
+    //cameras->front->yaw += 3;
+    //cameras->front->roll += 3;
 }

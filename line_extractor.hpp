@@ -58,7 +58,7 @@ struct camera_set {
 
 // /* Struct for lanemarks */
 struct lanemarks {
-    Vec4f rising_edge;
+    Vec4f rising_edge;//Vec4f:p0.x,p0.y,p1.x,p1.y
     Vec4f falling_edge;
 
 };
@@ -97,6 +97,16 @@ struct LaneCoef {
   bool valid;
   float coef_k;
   float coef_b;
+};
+struct VanishPoint {
+  bool valid;
+  float x;
+  float y;
+};
+struct LaneVanishPoint {
+  std::vector<LaneCoef> lane_coef;
+  VanishPoint vanish_point;
+  float pitch_raw;
 };
 
 struct RoiData {
@@ -164,6 +174,7 @@ CalibParams* camera_new(string name,
 
 
 cv::Mat get_extrinsic_mat(CalibParams* camera);
+CameraIntrinsic get_intrinsic(CalibParams* camera);
 
 void print_calib_params(CalibParams* camera);
 
@@ -241,7 +252,7 @@ void detect_line(const cv::Mat undistort_img,
                  std::vector<cv::Point2f> &point_r,
                  const int &canny_threshold);
 
-/* transorm one fisheye image into a birdeye image with the camera parameters
+/* transform one fisheye image into a birdeye image with the camera parameters
  *
  * camera: a pointer to CalibParams holding the parameters of the camera
  * img: a pointer to the fisheye image
@@ -250,7 +261,8 @@ void birdeye_oneview_transform(cv::Mat *img, cv::Mat *birdeye_img, CalibParams* 
 
 
 void oneview_extract_line(cv::Mat *img, cv::Mat *birdeye_img, CalibParams* camera, CalibParams* camera_v, one_frame_lines_set* res, vanishing_pts* v_pts);
-
+//to do
+bool oneview_extract_line(cv::Mat *img, CalibParams* camera, CalibParams* camera_v, std::vector<LaneCoef> &lane_coefs_each_image, VanishPoint &vanish_point_tmp, float &pitch_raw_tmp);
 
 // void line_pairing;
 
