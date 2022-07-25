@@ -4,7 +4,10 @@
     return a.vanish_point.y < b.vanish_point.y;
   }
 
-//bool calibration(double frame_num, camera_set* cameras, vector<one_frame_lines_set>* res, vanishing_pts* v_pts)
+bool calibration(double frame_num, camera_set* cameras, vector<one_frame_lines_set>* res, vanishing_pts* v_pts)
+{
+
+}
 bool calibration(double frame_num, camera_set* cameras,
     const std::vector<std::vector<LaneCoef>> &lane_coef,
     const std::vector<VanishPoint> &vanish_point,
@@ -109,7 +112,57 @@ bool calibration(double frame_num, camera_set* cameras,
 
 void solve_one_frame_cpy(Problem* problem, double* v, vector<lanemarks>* lanes, const double h0, const double hmax)
 {
-    
+  double pitch_average = 0;
+  // for (size_t i = 0; i < lane_data.size(); i++) {
+  //   LaneVanishPoint data = lane_data[i];
+  //   pitch_average += double(data.pitch_raw);
+  // }
+  // pitch_average /= lane_data.size();
+  std::cout << " Pitch initial value : " << pitch_average << std::endl;
+
+  double pitch = pitch_average;
+  double yaw = 0;
+
+
+  Problem problem;
+  for (int i = 0; i < int(lane_data.size()); ++i) {
+
+    LaneVanishPoint data = lane_data[i];
+
+    double k1 = double(data.lane_coef[0].coef_k);
+    double b1 = double(data.lane_coef[0].coef_b);
+
+    double k2 = double(data.lane_coef[1].coef_k);
+    double b2 = double(data.lane_coef[1].coef_b);
+
+    Eigen::Vector3d bearing1;
+    Eigen::Vector3d bearing2;
+    Eigen::Vector3d bearing3;
+    Eigen::Vector3d bearing4;
+    CalBearings(intrinsic, k1, b1, bearing1, bearing2);
+    CalBearings(intrinsic, k2, b2, bearing3, bearing4);
+
+    CostFunction *cost_function =
+        new NumericDiffCostFunction<CostFatorPitchYaw, ceres::CENTRAL, 1, 1, 1>(
+            new CostFatorPitchYaw(bearing1, bearing2, bearing3, bearing4,
+                                  height));
+    problem.AddResidualBlock(cost_function, NULL, &pitch, &yaw);
+  }
+  Solver::Options options;
+  options.linear_solver_type = ceres::DENSE_QR;
+  options.logging_type = ceres::SILENT;
+  options.minimizer_progress_to_stdout = false;
+  Solver::Summary summary;
+  Solve(options, &problem, &summary);
+  std::cout << summary.BriefReport() << "\n";
+
+  std::cout << " result  " << std::endl;
+  std::cout << "  pitch " << pitch_average << " -> " << pitch << std::endl;
+  std::cout << "  yaw " << 0.0 << " -> " << yaw << std::endl;
+
+  //output
+  float pitch_optimize = float(pitch);
+  float yaw_optimize = float(yaw);
 }
 
 

@@ -16,7 +16,7 @@ using ceres::Solver;
 // void side_camera_calibration(double frame_num, CalibParams* camera, vector<one_frame_lines_set>* res, Point2f* vp,
 //                              const double h0, const double hmax, const double center_axis);
 
-//bool calibration(double frame_num, camera_set* cameras, vector<one_frame_lines_set>* res, vanishing_pts* v_pts);
+bool calibration(double frame_num, camera_set* cameras, vector<one_frame_lines_set>* res, vanishing_pts* v_pts);
 bool calibration(double frame_num, camera_set* cameras,
     const std::vector<std::vector<LaneCoef>> &lane_coef,
     const std::vector<VanishPoint> &vanish_point,
