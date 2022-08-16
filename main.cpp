@@ -77,12 +77,13 @@ void DetectLane(Mat *all_img, camera_set* cameras, camera_set* camera_v,
 int main() {
     
     // read file
-    string path = "/home/deliadong/Job/SVS/hank/svs4/tesla-move.mp4";
+    string path = "Resources/tesla-move-part.mp4";
+    ///home/deliadong/Job/SVS/hank/svs4/tesla-move.mp4
     ///home/deliadong/Job/SVS/hank/tesla-move/svs/1/tesla-move.mp4
     //fourinone_34997.jpg
     //"/home/deliadong/Job/SVS/alex/1/CamA_20211028_064436_2x2_4SVS.mp4";
-    VideoCapture cap(path);
-    Mat img, img_crop;
+    //VideoCapture cap(path);
+    Mat img;
     
     // input parameters for the camera set
     camera_set* cameras = new camera_set;
@@ -154,38 +155,39 @@ int main() {
         std::vector<std::vector<LaneCoef>> lane_coefs;
         std::vector<VanishPoint> vanish_point;
         std::vector<float> pitch_raw;
-        cap.set(CAP_PROP_POS_FRAMES, 1);//delia
+        //cap.set(CAP_PROP_POS_FRAMES, 1);//delia
         for (int i = 0; i < frame_num; i ++) {
             cout << "i = " << i << endl;
-            if(!cap.read(img)) {
-                cout << "no video frame" << endl;
-                break;
-            }
+            // if(!cap.read(img)) {
+            //     cout << "no video frame" << endl;
+            //     break;
+            // }
             // image size is [2560 x 1440]
-            Mat img_crop, img_resize;
+            //delia test
+            Mat img = cv::Mat::zeros(fisheye_h*2, fisheye_w*2, CV_8UC3);
             
-            //birdeye_transform(&img, cameras, cameras_v, &multi_frame_set, &vanishing_pts_set);
-            DetectLane(&img, cameras, cameras_v, lane_coefs, vanish_point, pitch_raw);
+            birdeye_transform(&img, cameras, cameras_v, &multi_frame_set, &vanishing_pts_set);
+            //DetectLane(&img, cameras, cameras_v, lane_coefs, vanish_point, pitch_raw);
 
             // cv::imshow("img.png", img);
             // cv::waitKey(0);
         }
 
         std::cout << " Calculate Front Camera Extrinsic " << std::endl;
-        CameraRotationEuler rotation_angle;
+        /*CameraRotationEuler rotation_angle;
         bool result = calibration(frame_num, cameras_v, lane_coefs, vanish_point, pitch_raw, rotation_angle);
         if(result == true) {
             std::cout << " result [rad] " << std::endl;
             std::cout << " pitch " << rotation_angle.pitch << std::endl;
             std::cout << " yaw " << rotation_angle.yaw << std::endl;
             std::cout << " roll " << rotation_angle.roll << " not calculate " << std::endl;
-        }
+        }*/
 
 
-        //vanishing_pts final_vpts;
-        // cluster_vpt_set(&vanishing_pts_set, &final_vpts);//to do
+        vanishing_pts final_vpts;
+        //cluster_vpt_set(&vanishing_pts_set, &final_vpts);//to do
         //final_vpts = vanishing_pts_set[0];
-        //bool result = calibration(frame_num, cameras_v, &multi_frame_set, &final_vpts);
+        bool result = calibration(frame_num, cameras_v, &multi_frame_set, &final_vpts);
         // if (result == true) {
         //     for (int i = 0; i < frame_num; i ++) {
         //         std::vector<lanemarks> lines_orig;
@@ -327,7 +329,6 @@ void birdeye_transform(Mat* all_img, camera_set* cameras, camera_set* camera_v, 
 //    }
 //    cv::imshow("line extractor res", img_final);
 
-}
 
 void DetectLane(Mat *all_img, camera_set* cameras, camera_set* camera_v,
         std::vector<std::vector<LaneCoef>> &lane_coefs, std::vector<VanishPoint> &vanish_point, std::vector<float> &pitch_raw)

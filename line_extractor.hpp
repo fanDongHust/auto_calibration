@@ -55,6 +55,31 @@ struct camera_set {
     CalibParams* right;
 };
 
+/* Struct holding the parameters for one camera */
+struct CalibParams {
+    string name;
+    // double fx;
+    // double fy;
+    // double cx;
+    // double cy;
+    cv::Mat K;
+    // double k1;
+    // double k2;
+    // double k3;
+    // double k4;
+    cv::Mat D;
+    // double tx;
+    // double ty;
+    // double tz;
+    cv::Mat tvecs;
+    double roll;
+    double pitch;
+    double yaw;
+};
+// "front", 342, 339, 669, 471, 
+// 7.4000818911000327e-02, -1.4119762800860764e-02, -3.8102145102513209e-03, 3.3996593689209761e-04, 
+// 2.414, 0, -0.735
+//"front", 45.04, 37.39, 176, 352, 0, 0, 0, 0, 0, 0, 0
 
 // /* Struct for lanemarks */
 struct lanemarks {

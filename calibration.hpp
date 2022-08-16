@@ -1,7 +1,7 @@
 #ifndef calibration_hpp
 #define calibration_hpp
 
-#include "ceres/ceres.h"
+//#include "ceres/ceres.h"
 #include "line_extractor.hpp"
 
 using ceres::AutoDiffCostFunction;
@@ -16,7 +16,7 @@ using ceres::Solver;
 // void side_camera_calibration(double frame_num, CalibParams* camera, vector<one_frame_lines_set>* res, Point2f* vp,
 //                              const double h0, const double hmax, const double center_axis);
 
-//bool calibration(double frame_num, camera_set* cameras, vector<one_frame_lines_set>* res, vanishing_pts* v_pts);
+bool calibration(double frame_num, camera_set* cameras, vector<one_frame_lines_set>* res, vanishing_pts* v_pts);
 bool calibration(double frame_num, camera_set* cameras,
     const std::vector<std::vector<LaneCoef>> &lane_coef,
     const std::vector<VanishPoint> &vanish_point,
@@ -64,6 +64,7 @@ bool solve_multi_frame_cpy(int frame_num, double* v, CalibParams* camera, vector
 // bool correspondency_check(lanemarks* side_lane, lanemarks* front_back_lane, double threshold, double h);
 
 // bool pre_lanemark_pairing_check(vector<lanemarks>* lanes, double center_axis);
+
 
 // void update_lanes(vector<lanemarks>* lanes, Mat* H);
 

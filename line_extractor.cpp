@@ -106,7 +106,7 @@ void init_intrinsic(CalibParams* camera, Mat* cam_matrix, Mat* dist_coeffs) {
 
 
 
-void undistortFisheye(const cv::Mat &image_in, cv::Mat camera_intrinsic_matrix, cv::Vec4d distort_coeff_matrix, cv::Mat camera_extrinsic_matrix, cv::Mat &image_out) {
+void undistortFisheye(const cv::Mat &image_in, const cv::Mat &camera_intrinsic_matrix, const cv::Vec4d &distort_coeff_matrix, const cv::Mat &camera_extrinsic_matrix, cv::Mat &image_out) {
     double dx = 0.01;//unit:m/pixel
     double dy = 0.01;
     double scale = 3.6;
@@ -144,7 +144,39 @@ void undistortFisheye(const cv::Mat &image_in, cv::Mat camera_intrinsic_matrix, 
     cv::remap(image_in, image_out, map1, map2, cv::INTER_LINEAR);
 
 }
+//pinhole model camera
+void rotateImage(const cv::Mat &image_in, const cv::Mat &camera_intrinsic_matrix, const cv::Vec4d &distort_coeff_matrix, const cv::Mat &mat_R, cv::Mat &image_out) {
+    cv::Mat map1, map2;
+    cv::initUndistortRectifyMap(
+            camera_intrinsic_matrix, 
+            distort_coeff_matrix, 
+            mat_R,//cv::Mat::eye(3,3,CV_32FC1),//cv::Matx33d::eye()
+            camera_intrinsic_matrix,//camera_intrinsic_matrix,//
+            image_in.size(),
+            CV_32FC1, map1, map2);
+    cv::remap(image_in, image_out, map1, map2, cv::INTER_LINEAR);
+}
 
+void rotateLane(const Vec4f &line_in, const cv::Mat &camera_intrinsic_matrix, const cv::Vec4d &distort_coeff_matrix, const cv::Mat &mat_R, Vec4f &line_out) {
+    cv::Mat map_x, map_y;
+    cv::initUndistortRectifyMap(
+            camera_intrinsic_matrix, 
+            distort_coeff_matrix, 
+            mat_R,//cv::Mat::eye(3,3,CV_32FC1),//cv::Matx33d::eye()
+            camera_intrinsic_matrix,//camera_intrinsic_matrix,//
+            cv::Size(avm_w, avm_h),
+            CV_32FC1, map_x, map_y);
+    //cv::Point2i p0 = cv::Point2i(line_in[0],line_in[1]);
+    //lane_l.rising_edge = Vec4f(200,0,200,200);
+    //(122,0,144,139)
+    //Vec4f line = Vec4f(122,0,144,139);//(200,0,200,200);//
+    //Vec4f line = Vec4f(134,0,156,139);//(878,0,856,139);//(891,0,868,139)
+    line_out[0] = map_x.at<float>(line_in[1],line_in[0]);//map_x.at<float>(row_number, col_number)
+    line_out[1] = map_y.at<float>(line_in[1],line_in[0]);
+    line_out[2] = map_x.at<float>(line_in[3], line_in[2]);//map_x.at<float>(row_number, col_number)
+    line_out[3] = map_y.at<float>(line_in[3], line_in[2]);
+    cout << "line_out=" << line_out << endl;
+}
 
 
 void undistortFisheye(const cv::Mat &image_in, cv::Mat camera_intrinsic_matrix, cv::Vec4d distort_coeff_matrix, cv::Mat &image_out) {
@@ -180,8 +212,7 @@ void undistortFisheye(const cv::Mat &image_in, cv::Mat camera_intrinsic_matrix, 
 //cv::waitKey(0);
 }
 
-cv::Mat
-CreateBirdeyeView(const cv::Mat &img,
+cv::Mat CreateBirdeyeView(const cv::Mat &img,
                const CameraRotationEuler &rotation_angle,
                const CameraIntrinsic &intrinsic,
                const float &camera_height) {
@@ -428,7 +459,7 @@ cv::waitKey(30);
 }
 
 void oneview_extract_line(cv::Mat *img, cv::Mat *birdeye_img, CalibParams* camera, CalibParams* camera_v, one_frame_lines_set* res, vanishing_pts* v_pts) {
-    birdeye_oneview_transform(img, birdeye_img, camera, camera_v);
+//    birdeye_oneview_transform(img, birdeye_img, camera, camera_v);
 
 //     cv::Mat camera_intrinsic;
 //     cv::Mat camera_dist_coeffs;
@@ -444,17 +475,75 @@ void oneview_extract_line(cv::Mat *img, cv::Mat *birdeye_img, CalibParams* camer
 
 
     //Extracts lanemarks
+    cv::Mat birdeye_front_correct = cv::Mat::zeros(avm_h, avm_w, CV_8UC3);
 
     //just for test:
-    res->orig_lines = new one_frame_lines;
+    //step 1: generate correct birdeye
     lanemarks lane_l;
-    lane_l.rising_edge = Vec4f(0,0,0,0);
-    lane_l.falling_edge = Vec4f(0,0,0,0);
-    res->orig_lines->front_lanes.push_back(lane_l);
+    lane_l.rising_edge = Vec4f(200,0,200,200);
+    lane_l.falling_edge = Vec4f(210,0,210,200);
+    //res->orig_lines->front_lanes.push_back(lane_l);
     lanemarks lane_r;
-    lane_r.rising_edge = Vec4f(0,0,0,0);
-    lane_r.falling_edge = Vec4f(0,0,0,0);
+    lane_r.rising_edge = Vec4f(800,0,800,200);
+    lane_r.falling_edge = Vec4f(810,0,810,200);
+    //res->orig_lines->front_lanes.push_back(lane_r);
+    cv::line(birdeye_front_correct, cv::Point2f(lane_l.rising_edge[0], lane_l.rising_edge[1]), cv::Point2f(lane_l.rising_edge[2], lane_l.rising_edge[3]), Scalar(0, 0, 255), 1);
+    cv::line(birdeye_front_correct, cv::Point2f(lane_l.falling_edge[0], lane_l.falling_edge[1]), cv::Point2f(lane_l.falling_edge[2], lane_l.falling_edge[3]), Scalar(255, 0, 0), 1);
+    cv::line(birdeye_front_correct, cv::Point2f(lane_r.rising_edge[0], lane_r.rising_edge[1]), cv::Point2f(lane_r.rising_edge[2], lane_r.rising_edge[3]), Scalar(0, 0, 255), 1);
+    cv::line(birdeye_front_correct, cv::Point2f(lane_r.falling_edge[0], lane_r.falling_edge[1]), cv::Point2f(lane_r.falling_edge[2], lane_r.falling_edge[3]), Scalar(255, 0, 0), 1);
+    cv::imshow("birdeye_front_correct", birdeye_front_correct);
+    cv::waitKey(0);
+
+
+
+    //step 2: simulate the pose of virtual top view camera changed
+    camera_v->pitch += 3;
+    camera_v->yaw += 0;
+    camera_v->roll += 0;
+    cv::Mat rotation;
+    rotation_homography(camera_v, &rotation);
+    cv::Mat camera_intrinsic;
+    cv::Mat camera_dist_coeffs;
+    init_intrinsic(camera_v, &camera_intrinsic, &camera_dist_coeffs);
+    cv::Mat birdeye_front_rotate;
+    rotateImage(birdeye_front_correct, camera_intrinsic, camera_dist_coeffs, rotation, birdeye_front_rotate);
+    cv::imwrite("birdeye_front_rotate.png", birdeye_front_rotate);
+    cv::imshow("birdeye_front_rotate", birdeye_front_rotate);
+    cv::waitKey(0);
+
+    //step 3: rotate lane
+    lanemarks lane_l_rotated;
+    lane_l_rotated.rising_edge = Vec4f(122,0,144,139);
+    lane_l_rotated.falling_edge = Vec4f(134,0,156,139);
+    lanemarks lane_r_rotated;
+    lane_r_rotated.rising_edge = Vec4f(878,0,856,139);
+    lane_r_rotated.falling_edge = Vec4f(891,0,868,139);
+    Vec4f lane_l_rising_edge_orig;
+    Vec4f lane_l_falling_edge_orig; 
+    Vec4f lane_r_rising_edge_orig;
+    Vec4f lane_r_falling_edge_orig; 
+
+    rotateLane(lane_l_rotated.rising_edge, camera_intrinsic, camera_dist_coeffs, rotation, lane_l_rising_edge_orig);
+    rotateLane(lane_l_rotated.falling_edge, camera_intrinsic, camera_dist_coeffs, rotation, lane_l_falling_edge_orig);
+    rotateLane(lane_r_rotated.rising_edge, camera_intrinsic, camera_dist_coeffs, rotation, lane_r_rising_edge_orig);
+    rotateLane(lane_r_rotated.falling_edge, camera_intrinsic, camera_dist_coeffs, rotation, lane_r_falling_edge_orig);
+    cv::circle(birdeye_front_correct, cv::Point2f(lane_l_rising_edge_orig[0], lane_l_rising_edge_orig[1]), 2, cv::Scalar(0,255,0), 2);
+    cv::circle(birdeye_front_correct, cv::Point2f(lane_l_rising_edge_orig[2], lane_l_rising_edge_orig[3]), 2, cv::Scalar(0,255,0), 2);
+    cv::circle(birdeye_front_correct, cv::Point2f(lane_l_falling_edge_orig[0], lane_l_falling_edge_orig[1]), 2, cv::Scalar(0,255,0), 2);
+    cv::circle(birdeye_front_correct, cv::Point2f(lane_l_falling_edge_orig[2], lane_l_falling_edge_orig[3]), 2, cv::Scalar(0,255,0), 2);
+    cv::circle(birdeye_front_correct, cv::Point2f(lane_r_rising_edge_orig[0], lane_r_rising_edge_orig[1]), 2, cv::Scalar(0,255,0), 2);
+    cv::circle(birdeye_front_correct, cv::Point2f(lane_r_rising_edge_orig[2], lane_r_rising_edge_orig[3]), 2, cv::Scalar(0,255,0), 2);
+    cv::circle(birdeye_front_correct, cv::Point2f(lane_r_falling_edge_orig[0], lane_r_falling_edge_orig[1]), 2, cv::Scalar(0,255,0), 2);
+    cv::circle(birdeye_front_correct, cv::Point2f(lane_r_falling_edge_orig[2], lane_r_falling_edge_orig[3]), 2, cv::Scalar(0,255,0), 2);
+    cv::imshow("birdeye_front_rotate_lane", birdeye_front_correct);
+    cv::waitKey(0);
+
+
+    //step 4: use rotated lane to estimate pitch
+    res->orig_lines = new one_frame_lines;
+    res->orig_lines->front_lanes.push_back(lane_l);
     res->orig_lines->front_lanes.push_back(lane_r);
+
 
     cout << "delia test 2:\n";
     cout << "res->orig_lines->front_lanes.lane_l" << res->orig_lines->front_lanes[0].rising_edge << "\n";
@@ -462,12 +551,16 @@ void oneview_extract_line(cv::Mat *img, cv::Mat *birdeye_img, CalibParams* camer
     cout << "res->orig_lines->front_lanes.lane_r" << res->orig_lines->front_lanes[1].rising_edge << "\n";
     cout << "res->orig_lines->front_lanes.lane_r" << res->orig_lines->front_lanes[1].falling_edge << "\n";
 
-
-
     //to do:
     //save res and v_pts
     //res->orig_lines = ;
     //v_pts->front_vp = inter;
+
+    //recover camera_v
+    camera_v->pitch -= 3;
+    camera_v->yaw += 0;
+    camera_v->roll += 0;
+
 
 }
 
@@ -516,7 +609,7 @@ cv::Mat ground_stitch(cv::Mat img_GF, cv::Mat img_GL,
 
 cv::Mat project_on_ground(cv::Mat img, cv::Mat T_CG, cv::Mat K_C, cv::Mat D_C, cv::Mat K_G, int rows, int cols) {
     // 	cout<<"--------------------Init p_G and P_G------------------------"<<endl;
-    //For a point pG = [uG, vG, 1]T in the bird¡¯s - eye - view image
+    //For a point pG = [uG, vG, 1]T in the birdï¿½ï¿½s - eye - view image
     cv::Mat p_G = cv::Mat::ones(3, rows * cols, CV_64FC1);
     for (int i = 0;i < rows;i++)
     {
@@ -713,10 +806,10 @@ Vec3f rotationMatrixToEulerAngles(Mat &R)
 
 }
 
-//½Ç¶È×ª»»Îª»¡¶È
+//ï¿½Ç¶ï¿½×ªï¿½ï¿½Îªï¿½ï¿½ï¿½ï¿½
 double angle_to_radian(double degree, double min, double second)
 {
-	double flag = (degree < 0)? -1.0 : 1.0;			//ÅÐ¶ÏÕý¸º
+	double flag = (degree < 0)? -1.0 : 1.0;			//ï¿½Ð¶ï¿½ï¿½ï¿½ï¿½ï¿½
     if(degree<0)
     {
         degree = degree * (-1.0);
@@ -726,7 +819,7 @@ double angle_to_radian(double degree, double min, double second)
 	return result;
 	//cout<<result<<endl;
 }
-//»¡¶È×ª»»Îª½Ç¶È
+//ï¿½ï¿½ï¿½ï¿½×ªï¿½ï¿½Îªï¿½Ç¶ï¿½
 void radian_to_angle(double rad, double ang[])
 {
     double flag = (rad < 0)? -1.0 : 1.0;
@@ -1022,20 +1115,20 @@ void detect_line(const cv::Mat undistort_img,
 
 
 //====================================================================//
-//Program:RANSACÖ±ÏßÄâºÏ
-//RANSAC ÄâºÏ2D Ö±Ïß
-//ÊäÈë²ÎÊý£ºpoints--ÊäÈëµã¼¯
-//        iterations--µü´ú´ÎÊý
-//        sigma--Êý¾ÝºÍÄ£ÐÍÖ®¼ä¿É½ÓÊÜµÄ²îÖµ,³µµÀÏßÏñËØ¿í´øÒ»°ãÎª10×óÓÒ
-//              £¨Parameter use to compute the fitting score£©
-//        k_min/k_max--ÄâºÏµÄÖ±ÏßÐ±ÂÊµÄÈ¡Öµ·¶Î§.
-//                     ¿¼ÂÇµ½×óÓÒ³µµÀÏßÔÚÍ¼ÏñÖÐµÄÐ±ÂÊÎ»ÓÚÒ»¶¨·¶Î§ÄÚ£¬
-//                      Ìí¼Ó´Ë²ÎÊý£¬Í¬Ê±¿ÉÒÔ±ÜÃâ¼ì²â´¹ÏßºÍË®Æ½Ïß
-//Êä³ö²ÎÊý:line--ÄâºÏµÄÖ±Ïß²ÎÊý,It is a vector of 4 floats
+//Program:RANSACÖ±ï¿½ï¿½ï¿½ï¿½ï¿½
+//RANSAC ï¿½ï¿½ï¿½2D Ö±ï¿½ï¿½
+//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½points--ï¿½ï¿½ï¿½ï¿½ã¼¯
+//        iterations--ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+//        sigma--ï¿½ï¿½ï¿½Ýºï¿½Ä£ï¿½ï¿½Ö®ï¿½ï¿½É½ï¿½ï¿½ÜµÄ²ï¿½Öµ,ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ø¿ï¿½ï¿½ï¿½Ò»ï¿½ï¿½Îª10ï¿½ï¿½ï¿½ï¿½
+//              ï¿½ï¿½Parameter use to compute the fitting scoreï¿½ï¿½
+//        k_min/k_max--ï¿½ï¿½Ïµï¿½Ö±ï¿½ï¿½Ð±ï¿½Êµï¿½È¡Öµï¿½ï¿½Î§.
+//                     ï¿½ï¿½ï¿½Çµï¿½ï¿½ï¿½ï¿½Ò³ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í¼ï¿½ï¿½ï¿½Ðµï¿½Ð±ï¿½ï¿½Î»ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½Î§ï¿½Ú£ï¿½
+//                      ï¿½ï¿½ï¿½Ó´Ë²ï¿½ï¿½ï¿½ï¿½ï¿½Í¬Ê±ï¿½ï¿½ï¿½Ô±ï¿½ï¿½ï¿½ï¿½â´¹ï¿½ßºï¿½Ë®Æ½ï¿½ï¿½
+//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½:line--ï¿½ï¿½Ïµï¿½Ö±ï¿½ß²ï¿½ï¿½ï¿½,It is a vector of 4 floats
 //              (vx, vy, x0, y0) where (vx, vy) is a normalized
 //              vector collinear to the line and (x0, y0) is some
 //              point on the line.
-//·µ»ØÖµ£ºÎÞ
+//ï¿½ï¿½ï¿½ï¿½Öµï¿½ï¿½ï¿½ï¿½
 void fitLineRansac(const std::vector<cv::Point2f>& points,
                    cv::Vec4f &line,
                    int iterations,
@@ -1063,7 +1156,7 @@ void fitLineRansac(const std::vector<cv::Point2f>& points,
         const cv::Point2f& p1 = points[i1];
         const cv::Point2f& p2 = points[i2];
 
-        cv::Point2f dp = p2-p1;//Ö±ÏßµÄ·½ÏòÏòÁ¿
+        cv::Point2f dp = p2-p1;//Ö±ï¿½ßµÄ·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         dp *= 1./norm(dp);
         double score = 0;
 
@@ -1072,8 +1165,8 @@ void fitLineRansac(const std::vector<cv::Point2f>& points,
             for(int i=0; i<n; i++)
             {
                 cv::Point2f v = points[i]-p1;
-                double d = v.y*dp.x - v.x*dp.y;//ÏòÁ¿aÓëb²æ³Ë/ÏòÁ¿bµÄÃþ.||b||=1./norm(dp)
-                //score += exp(-0.5*d*d/(sigma*sigma));//Îó²î¶¨Òå·½Ê½µÄÒ»ÖÖ
+                double d = v.y*dp.x - v.x*dp.y;//ï¿½ï¿½ï¿½ï¿½aï¿½ï¿½bï¿½ï¿½ï¿½/ï¿½ï¿½ï¿½ï¿½bï¿½ï¿½ï¿½ï¿½.||b||=1./norm(dp)
+                //score += exp(-0.5*d*d/(sigma*sigma));//ï¿½ï¿½î¶¨ï¿½å·½Ê½ï¿½ï¿½Ò»ï¿½ï¿½
                 if( fabs(d)<sigma )
                     score += 1;
             }
